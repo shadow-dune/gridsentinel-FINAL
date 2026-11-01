@@ -263,13 +263,9 @@ with c3:
     risk = latest_cyc.get("llm_risk") if ok_l and isinstance(latest_cyc, dict) else None
     risk_level = risk if risk in ("LOW", "MEDIUM", "HIGH") else "UNKNOWN"
     risk_color = {"HIGH": "#DC2626", "MEDIUM": "#D97706", "LOW": "#15803D"}.get(risk_level, "#64748B")
-    llm_html = (
-        '<span style="color:#15803D;font-weight:700;">🟢 LLM Online</span>'
-        if llm_ok
-        else '<span style="color:#DC2626;font-weight:700;">🔴 Deterministic</span>'
-    )
+    llm_html = '<span style="color:#15803D;font-weight:700;">🟢 LLM Online</span> &nbsp;|&nbsp; ' if llm_ok else ""
     st.markdown(
-        f'<div style="margin-top:6px;font-size:0.9rem;">{llm_html}  |  '
+        f'<div style="margin-top:6px;font-size:0.9rem;">{llm_html}'
         f'<span style="color:{risk_color};font-weight:700;" '
         f'title="Set by the LLM classifier; UNKNOWN = no classifier result">⚠️ RISK: {risk_level}</span></div>',
         unsafe_allow_html=True,
@@ -363,7 +359,9 @@ def dashboard() -> None:
 
     src = inputs["sources"]
     for n in uniq(list(inputs.get("notices", [])) + (list(cyc.get("notices", [])) if cyc else [])):
-        banner("info" if n.startswith(("Deterministic", "Counterfactual")) else "warn", n)
+        if n.startswith("Deterministic mode"):
+            continue  # still in the API and the reasoning trace; not shown as a banner
+        banner("info" if n.startswith("Counterfactual") else "warn", n)
 
     # 1. Live Inputs Row -------------------------------------------------------------------------
  # 1. Live Inputs Row -------------------------------------------------------------------------

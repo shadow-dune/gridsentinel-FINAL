@@ -139,7 +139,7 @@ class Tools:
         if not llm.configured:
             c.deterministic = True; c.notice("Deterministic mode (no LLM).")
             c.add("parse_alerts", f"{len(feed.alerts)} bulletins, LLM not configured", "skip alert parsing",
-                  "Deterministic mode (no LLM)", "0 constraints")
+                  "No LLM is configured to read the bulletins", "0 constraints")
             c.done.add("parse_alerts"); return {"constraints": 0}
         try:
             cons = llm.parse_alerts(feed.alerts, datetime.now(timezone.utc))
@@ -149,7 +149,7 @@ class Tools:
                   "Schema validation failed", str(exc)[:160]); c.done.add("parse_alerts"); return {"constraints": 0}
         except LLMError as exc:
             c.deterministic = True; c.notice("Deterministic mode (no LLM).")
-            c.add("parse_alerts", "LLM unreachable", "continue in deterministic mode", str(exc)[:400], "0 constraints")
+            c.add("parse_alerts", "LLM unreachable", "continue without alert constraints", str(exc)[:400], "0 constraints")
             c.done.add("parse_alerts"); return {"constraints": 0}
         kept, conflict = resolve_conflicts(cons)
         if conflict:

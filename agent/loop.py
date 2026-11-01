@@ -95,7 +95,7 @@ def run_agent(ctx: CycleContext) -> None:
         except LLMError as exc:
             ctx.deterministic = True
             ctx.notice("Deterministic mode (no LLM).")
-            ctx.add("agent", "LLM unreachable", "switch to deterministic mode", str(exc)[:400], "deterministic sequence")
+            ctx.add("agent", "LLM unreachable", "run the standard pipeline without the LLM", str(exc)[:400], "standard pipeline")
     else:
         ctx.deterministic = True
         ctx.notice("Deterministic mode (no LLM).")
@@ -109,6 +109,6 @@ def run_agent(ctx: CycleContext) -> None:
         return
     if ctx.status != CycleStatus.held_safe:
         if ctx.finished and "execute_step" not in ctx.done:
-            ctx.add("agent", "LLM finished before executing", "complete required steps deterministically",
+            ctx.add("agent", "LLM finished before executing", "complete the remaining required steps",
                     "Required pipeline steps are never skipped", "continuing")
         _deterministic(ctx, tools)
