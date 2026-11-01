@@ -1,8 +1,3 @@
----
-title: GridSentinel
-sdk: docker
-app_port: 7860
----
 # GridSentinel Preemptive Controller
 
 Autonomous, preemptive cooling controller for a data center in **Frankfurt am Main, Germany** (bidding zone DE-LU). It ingests **live** weather,
