@@ -1,0 +1,22 @@
+{
+  "name": "GridSentinel",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "secrets": {
+    "OPERATOR_TOKEN": {
+      "description": "Operator token for the dashboard and mutating API calls (at least 8 characters)."
+    },
+    "LLM_API_KEY": {
+      "description": "Optional. Without it the controller runs in deterministic mode."
+    }
+  },
+  "postCreateCommand": "pip install --user -r requirements.txt && cp -n .env.example .env",
+  "postAttachCommand": "bash .devcontainer/run.sh",
+  "forwardPorts": [7860, 8000],
+  "portsAttributes": {
+    "7860": { "label": "Dashboard", "onAutoForward": "openBrowser" },
+    "8000": { "label": "API", "onAutoForward": "silent" }
+  },
+  "customizations": {
+    "vscode": { "extensions": ["ms-python.python"] }
+  }
+}

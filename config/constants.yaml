@@ -1,0 +1,55 @@
+# Model PARAMETERS (not data). Every entry needs value/unit/source/status.
+# status: cited = from a published reference; derived = computed from other values;
+#         assumed = engineering assumption the team must calibrate. Assumed values are listed in the README and UI.
+facility:
+  rated_it_capacity_kw: {value: 500.0, unit: kW, source: "Team assumption: size of the simulated facility's IT hall at 100% host load", status: assumed}
+  idle_it_power_fraction: {value: 0.45, unit: fraction, source: "Team assumption: IT power at 0% host load as a fraction of rated", status: assumed}
+  cpu_weight: {value: 0.75, unit: fraction, source: "Team assumption: weight of host CPU% in the utilisation proxy", status: assumed}
+  mem_weight: {value: 0.25, unit: fraction, source: "Team assumption: weight of host RAM% in the utilisation proxy (cpu_weight + mem_weight = 1)", status: assumed}
+thermal:
+  c_air_kwh_per_c: {value: 18.5, unit: kWh/C, source: "Team assumption: effective air + light-equipment thermal capacitance", status: assumed}
+  c_mass_kwh_per_c: {value: 140.0, unit: kWh/C, source: "Team assumption: structure/raised-floor/rack thermal mass", status: assumed}
+  r_env_c_per_kw: {value: 0.2, unit: C/kW, source: "Team assumption: envelope resistance (UA = 1/R = 5 kW/C, insulated hall). With UA = 20 kW/C a Frankfurt winter (~5 C) cooled the hall below 18 C with no heating model, so every cycle held safe", status: assumed}
+  r_mass_c_per_kw: {value: 0.012, unit: C/kW, source: "Team assumption: air-to-mass coupling resistance", status: assumed}
+  initial_air_temp_c: {value: 24.0, unit: C, source: "Team assumption: initial twin state on first start only (twin state is persisted afterwards)", status: assumed}
+  initial_mass_temp_c: {value: 24.0, unit: C, source: "Team assumption: initial twin state on first start only", status: assumed}
+plant:
+  max_cooling_thermal_kw: {value: 700.0, unit: kW, source: "Team assumption: total cooling plant thermal capacity", status: assumed}
+  cop_mech_nominal: {value: 4.8, unit: ratio, source: "Team assumption: chiller COP at 25 C outdoor", status: assumed}
+  cop_mech_slope_per_c: {value: -0.085, unit: 1/C, source: "Team assumption: linear COP derating per C above 25 C (fit to manufacturer curve before use)", status: assumed}
+  cop_mech_quad_per_c2: {value: -0.0012, unit: 1/C^2, source: "Team assumption: quadratic COP derating above 25 C", status: assumed}
+  cop_mech_floor: {value: 1.8, unit: ratio, source: "Team assumption: minimum COP", status: assumed}
+  cop_evap_nominal: {value: 12.0, unit: ratio, source: "Team assumption: evaporative-assist thermal kW per electrical kW (fans+pumps) at 20 C wet bulb", status: assumed}
+  cop_evap_slope_per_c_wet: {value: -0.2, unit: 1/C, source: "Team assumption: evaporative COP change per C of wet-bulb above 20 C", status: assumed}
+  cop_evap_floor: {value: 4.0, unit: ratio, source: "Team assumption: minimum evaporative COP", status: assumed}
+  evap_cap_kw_per_k_depression: {value: 30.0, unit: kW/K, source: "Team assumption: evaporative capacity per K of wet-bulb depression (T_out - T_wet)", status: assumed}
+  max_evap_thermal_kw: {value: 500.0, unit: kW, source: "Team assumption: evaporative section thermal capacity", status: assumed}
+  latent_heat_kj_per_kg: {value: 2430.0, unit: kJ/kg, source: "Latent heat of vaporisation of water near 30 C, standard steam tables (verify against your reference)", status: cited}
+  max_cooling_ramp_kw_per_step: {value: 175.0, unit: kW/step, source: "Team assumption: plant ramp limit per 15-minute step", status: assumed}
+safety:
+  temp_min_c: {value: 18.0, unit: C, source: "ASHRAE TC 9.9 recommended inlet envelope lower bound (18 C)", status: cited}
+  temp_hard_max_c: {value: 27.0, unit: C, source: "ASHRAE TC 9.9 recommended inlet envelope upper bound (27 C)", status: cited}
+  temp_recommended_max_c: {value: 25.0, unit: C, source: "Operator policy (spec L9): soft upper target", status: assumed}
+  max_setpoint_slew_c_per_step: {value: 1.5, unit: C/step, source: "Specification Q9/UT9 (limit 1.5 C per step)", status: cited}
+  verify_tolerance_c: {value: 1.0, unit: C, source: "Specification L13 (rollback if |actual - predicted| > 1.0 C)", status: cited}
+  numeric_tolerance_c: {value: 0.001, unit: C, source: "Numerical tolerance for bound checks", status: derived}
+market:
+  price_adder_eur_per_kwh: {value: 0.08, unit: EUR/kWh, source: "Team assumption: grid fees (medium voltage), Stromsteuer, KWKG/Offshore/Sec.19 levies and concession fee added to the day-ahead spot price for a German industrial dynamic-price contract; replace with your supply contract", status: assumed}
+optimizer:
+  w_peak_eur_per_kw: {value: 0.5, unit: EUR/kW, source: "Team assumption: weight on peak draw over the 12 h horizon (replace with your grid operator's Leistungspreis share)", status: assumed}
+  w_water_eur_per_l: {value: 0.004, unit: EUR/L, source: "Team assumption: water + wastewater ~4 EUR/m3 (replace with the local Frankfurt tariff)", status: assumed}
+  w_violation_temp: {value: 30.0, unit: EUR/(K*step), source: "Penalty making soft temperature slack a last resort", status: assumed}
+  w_violation_peak: {value: 3.0, unit: EUR/kW, source: "Penalty on exceeding the peak cap", status: assumed}
+  w_violation_water: {value: 0.3, unit: EUR/L, source: "Penalty on exceeding the water budget", status: assumed}
+  stress_price_premium_lambda: {value: 0.25, unit: fraction, source: "Team assumption: effective price premium on stress steps (price_eff = price * (1 + lambda))", status: assumed}
+  peak_cap_kw: {value: null, unit: kW, source: "Optional soft cap on facility draw; null = no cap", status: assumed}
+  water_budget_l: {value: 6000.0, unit: L, source: "Team assumption: water available over the 12 h horizon", status: assumed}
+  baseline_evap_share: {value: 0.0, unit: fraction, source: "Team assumption: fixed evaporative share of the reactive baseline's cooling", status: assumed}
+  terminal_mass_tolerance_c: {value: 0.05, unit: C, source: "Fair-comparison tolerance: plan may not end with a warmer thermal mass than the baseline", status: derived}
+stress:
+  s1_price_percentile: {value: 75.0, unit: percentile, source: "Team assumption: S1 fires when the day-ahead spot price is at or above this percentile of the previous 7 days", status: assumed}
+  s2_percentile: {value: 90.0, unit: percentile, source: "Specification L6 (S2)", status: cited}
+  s2_min_samples: {value: 24, unit: samples, source: "Team assumption: minimum stored live-signal samples before S2 can fire", status: assumed}
+  s2_persist_steps: {value: 4, unit: steps, source: "Team assumption: a current-value exceedance is persisted for this many 15-minute steps", status: assumed}
+  s3_min_severity: {value: 2, unit: level, source: "Specification L6 (S3)", status: cited}
+  s4_capacity_fraction: {value: 0.85, unit: fraction, source: "Specification L6 (S4)", status: cited}
