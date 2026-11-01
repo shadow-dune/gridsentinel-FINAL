@@ -46,6 +46,7 @@ CHIP = {
     "FALLBACK_LIVE": "#1d4ed8",
     "STALE": "#b45309",
     "FAILED": "#b91c1c",
+    "NOT CONFIGURED": "#64748b",
     "PUBLISHED": "#0f766e",
     "CACHED": "#1d4ed8",
     "FALLBACK": "#b45309",
@@ -56,6 +57,7 @@ CHIP = {
     "proposed": "#475569",
     "failed": "#b91c1c",
 }
+OPTIONAL_SOURCES = {"alerts", "grid_signal"}  # weather, market and telemetry are required: never relabelled
 TAG_RE = re.compile(r"^\[(LIVE|CACHED|FALLBACK)\]\s*")
 
 st.set_page_config(page_title="GridSentinel Controller", layout="wide")
@@ -364,7 +366,12 @@ def dashboard() -> None:
         s = src[key]
         p = s["provenance"]
         src_tag, clean = split_tag(p["source_name"])
-        if p["status"] in ("FAILED", "STALE"):
+        reason = p.get("stale_reason") or ""
+        # Optional sources the operator chose not to set up are not failures (required ones stay FAILED).
+        not_configured = key in OPTIONAL_SOURCES and p["status"] == "FAILED" and "not configured" in reason
+        if not_configured:
+            status = "NOT CONFIGURED"
+        elif p["status"] in ("FAILED", "STALE"):
             status = p["status"]  # Never mask FAILED or STALE behind PUBLISHED
         elif src_tag in ("FALLBACK", "CACHED"):
             status = src_tag
@@ -372,18 +379,19 @@ def dashboard() -> None:
             status = "PUBLISHED"
         else:
             status = p["status"]
-        stale = (
-            f'<br><span style="color:#DC2626;font-size:0.75rem;word-break:break-word;">{p["stale_reason"]}</span>'
-            if p.get("stale_reason")
-            else ""
-        )
+        if not_configured:
+            stale = '<br><span style="font-size:0.75rem;">Optional; set ALERT_FEED_URL to enable.</span>' if key == "alerts" else ""
+        elif reason:
+            stale = f'<br><span style="color:#DC2626;font-size:0.75rem;word-break:break-word;">{reason}</span>'
+        else:
+            stale = ""
         sub_html = f'<div style="font-size:0.78rem;font-weight:600;color:#475569;margin-bottom:4px;">{sub_body}</div>' if sub_body else ""
         col.markdown(
             f'<div class="card"><h4>{title}</h4>{chip(status)}<span class="tag">{tag or p["signal_kind"]}</span><br>'
             f'<div style="font-size:1.25rem;font-weight:800;margin:10px 0 4px 0;color:#0F172A;">{body}</div>'
             f'{sub_html}'
             f'<div class="muted" style="word-break:break-word;">{clean}<br>'
-            f'{fmt(p["fetched_at"]) if s["data"] else "no data"}{stale}</div></div>',
+            f'{fmt(p["fetched_at"]) if s["data"] else ("off" if not_configured else "no data")}{stale}</div></div>',
             unsafe_allow_html=True,
         )
 
