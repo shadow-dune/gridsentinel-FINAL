@@ -305,13 +305,16 @@ if run:
     ok, resp = call("POST", "/api/cycles", json={"mode": mode, "stress_offset_c": offset})
     if not ok:
         banner("err", resp.get("error", {}).get("message", "Request failed."))
+        print(f"[frontend] cycle request failed: {resp.get('error', {}).get('message')}", flush=True)
     else:
         cid = resp["cycle_id"]
+        print(f"[frontend] cycle {cid} started (mode={mode}, offset={offset})", flush=True)
         st.subheader("Live Execution Stream")
         box = st.container()
         streamed = False
         try:
-            with httpx.stream("GET", f"{API}/api/cycles/{cid}/events", timeout=120) as r:
+            # short connect timeout, long read timeout: an LLM-driven cycle can take a while
+            with httpx.stream("GET", f"{API}/api/cycles/{cid}/events", timeout=httpx.Timeout(10.0, read=600.0)) as r:
                 for line in r.iter_lines():
                     if line.startswith("data: {") and '"n"' in line:
                         t = json.loads(line[6:])
@@ -324,11 +327,16 @@ if run:
                             unsafe_allow_html=True,
                         )
                 streamed = True
-        except Exception:
-            banner("err", "Cannot reach the controller.")
+        except Exception as e:
+            banner("err", "Lost the connection to the controller while the cycle was running. Its result will appear below once it finishes.")
+            print(f"[frontend] cycle {cid} stream error: {type(e).__name__}: {e}", flush=True)
         if streamed:
-            latest_cycle.clear()
-            st.rerun()
+            latest_cycle.clear()  # the dashboard below is drawn after this, so it shows the new cycle without a rerun
+            ok_r, res = call("GET", f"/api/cycles/{cid}")
+            status = res.get("status", "unknown") if ok_r else "unknown"
+            print(f"[frontend] cycle {cid} finished: {status}", flush=True)
+            kind = {"completed": "info", "held_safe": "warn"}.get(status, "err")
+            banner(kind, f"Cycle finished: <b>{status.replace('_', ' ')}</b>. The updated forecast, plan and comparison are below.")
 
 
 # ------------------------------------------------------------------------------------------ dashboard
