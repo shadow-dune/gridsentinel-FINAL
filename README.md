@@ -1,3 +1,8 @@
+---
+title: GridSentinel
+sdk: docker
+app_port: 7860
+---
 # GridSentinel Preemptive Controller
 
 Autonomous, preemptive cooling controller for a data center in **Frankfurt am Main, Germany** (bidding zone DE-LU). It ingests **live** weather,
@@ -44,8 +49,9 @@ uvicorn api.main:app_factory --factory --port 8000      # backend
 streamlit run ui/app.py                                # dashboard (needs OPERATOR_TOKEN, API_BASE_URL in env)
 # or one container: docker build -t gridsentinel . && docker run -p 7860:7860 --env-file .env gridsentinel
 ```
+Streamlit Community Cloud (free, public `*.streamlit.app` link): deploy `ui/app.py` from your GitHub repo with Python 3.12. The dashboard starts the backend itself as a child process on 127.0.0.1:8000 (`BACKEND_AUTOSTART=false` disables this). Put `OPERATOR_TOKEN`, `FACILITY_LAT`, `FACILITY_LON`, `FACILITY_TIMEZONE`, `FACILITY_REGION_NAME` and `ALERT_FEED_URL` in the app's Secrets as quoted top-level TOML strings; Streamlit exposes them as environment variables.
 GitHub Codespaces: add `OPERATOR_TOKEN` as a Codespaces secret, then create a codespace. `.devcontainer/` installs the dependencies and starts both processes; the dashboard opens on port 7860. Keep that port private, because the dashboard has no login.
-Hugging Face Spaces: Docker Space; set the variables as secrets. The disk is ephemeral, so cold start without network is a supported state (E17).
+Hugging Face Spaces: Docker Space (the header at the top of this file configures it); set `OPERATOR_TOKEN` and `LLM_API_KEY` as secrets, and `FACILITY_LAT`, `FACILITY_LON`, `FACILITY_TIMEZONE`, `FACILITY_REGION_NAME` and `ALERT_FEED_URL` as variables. The dashboard has no login, so anyone with a public link can operate the controller. The disk is ephemeral, so cold start without network is a supported state (E17).
 
 ## Test
 ```bash

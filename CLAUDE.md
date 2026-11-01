@@ -57,5 +57,6 @@ Modes (`data/schemas.py:Mode`): `autonomous` applies immediately; `approval_requ
 - Code comments reference spec IDs (AC#, E#, UT#, V#, S#, Q#); test names follow the same IDs — keep them aligned when changing behavior.
 - `ctx.extras` is shared between `_prepare` (ml_*, llm_risk) and `optimize_plan` (sims): merge into it, never reassign.
 - `.data/india-backup/` holds the pre-migration India files (old DB, synthetic IEX CSV, TNERC tariff); nothing reads them.
+- `ui/app.py:ensure_backend` starts the backend as a subprocess when `API_BASE_URL` is local and unhealthy (needed for Streamlit Community Cloud); its startup log goes to `.data/backend.log`. `load_dotenv` is pinned to the project's `.env`, because a stale India-era `.env` exists in the parent folder.
 - Settings are read through cached `config.settings.get_settings()`; call `get_settings.cache_clear()` after changing env in tests.
 - README lists external endpoints (Open-Meteo minutely_15/archive, OpenWeatherMap, Electricity Maps, LLM tool calling) as UNVERIFIED against live services.

@@ -4,7 +4,13 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
+import sys
+import threading
+import time
 from datetime import datetime, timezone
+from pathlib import Path
+from urllib.parse import urlparse
 from typing import Any, List, Optional, Tuple
 from zoneinfo import ZoneInfo
 
@@ -14,7 +20,16 @@ from plotly.subplots import make_subplots
 import streamlit as st
 from dotenv import load_dotenv
 
-load_dotenv()
+# Streamlit Community Cloud: copy root-level secrets into the environment explicitly, so this file and the backend
+# child process (which inherits os.environ) see them no matter when Streamlit loads secrets. Real env vars win.
+try:
+    for _key, _value in st.secrets.items():
+        if isinstance(_value, (str, int, float, bool)):
+            os.environ.setdefault(_key, str(_value))
+except Exception:
+    pass  # no secrets.toml (local runs use .env)
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")  # only this project's .env, never a parent folder's
 
 API = os.environ.get("API_BASE_URL", "http://127.0.0.1:8000")
 TOKEN = os.environ.get("OPERATOR_TOKEN", "")
@@ -77,6 +92,77 @@ button[kind="secondary"]:hover {background-color:#E2E8F0 !important;color:#0F172
 
 if not TOKEN:
     st.error("⚠️ OPERATOR_TOKEN is missing from your .env file.")
+
+
+# ------------------------------------------------------------------------------------------ backend autostart
+# Single-process hosts (Streamlit Community Cloud) only run this file. If API_BASE_URL points at this machine and
+# nothing answers there, start the FastAPI backend as a child process. With start.sh / Docker / Codespaces the
+# backend is already up, the health check passes and nothing is started. Set BACKEND_AUTOSTART=false to disable.
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def _backend_healthy() -> bool:
+    try:
+        return httpx.get(API + "/api/health", timeout=1.0).status_code == 200
+    except Exception:
+        return False
+
+
+def _pump_output(proc: subprocess.Popen, log_path: Path) -> None:
+    """Copy backend output to .data/backend.log and to this process's stdout (visible in Streamlit Cloud logs)."""
+    with open(log_path, "ab") as log:
+        for line in iter(proc.stdout.readline, b""):
+            log.write(line)
+            log.flush()
+            sys.stdout.write("[backend] " + line.decode(errors="replace"))
+            sys.stdout.flush()
+
+
+@st.cache_resource(show_spinner="Starting the controller backend…")
+def ensure_backend() -> Optional[subprocess.Popen]:
+    """Runs once per Streamlit server process. Raises (and is retried on the next page load) if the start fails.
+
+    Returns the child process (None when the backend is external or already running)."""
+    if _backend_healthy():
+        return None
+    target = urlparse(API)
+    if os.environ.get("BACKEND_AUTOSTART", "true").lower() == "false" or target.hostname not in ("127.0.0.1", "localhost"):
+        return None
+    log_path = ROOT / ".data" / "backend.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    print(f"[frontend] starting backend on {target.hostname}:{target.port or 8000}", flush=True)
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "api.main:app_factory", "--factory",
+         "--host", "127.0.0.1", "--port", str(target.port or 8000)],
+        cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+    )
+    threading.Thread(target=_pump_output, args=(proc, log_path), daemon=True).start()
+    deadline = time.monotonic() + 90
+    while time.monotonic() < deadline:
+        if proc.poll() is not None:
+            time.sleep(0.3)  # let the pump thread flush the last lines
+            tail = log_path.read_text(errors="replace")[-1500:]
+            # never show received settings on the page: they can contain OPERATOR_TOKEN / LLM_API_KEY
+            tail = re.sub(r"input_value=.*?(, input_type=|\]$)", r"input_value=<hidden>\1", tail, flags=re.M)
+            raise RuntimeError(f"The backend stopped during startup (exit code {proc.returncode}).\n\n{tail}")
+        if _backend_healthy():
+            print("[frontend] backend is up", flush=True)
+            return proc
+        time.sleep(0.5)
+    proc.terminate()
+    raise RuntimeError("The backend did not answer within 90 seconds. See the app logs.")
+
+
+try:
+    _proc = ensure_backend()
+    if _proc is not None and _proc.poll() is not None:  # backend crashed after starting: start it again
+        print(f"[frontend] backend exited with code {_proc.returncode}; restarting", flush=True)
+        ensure_backend.clear()
+        ensure_backend()
+except RuntimeError as exc:
+    st.error("Could not start the controller backend. Check the secrets (OPERATOR_TOKEN and FACILITY_*), then reload.")
+    st.code(str(exc), language="text")
+    st.stop()
 
 
 # ------------------------------------------------------------------------------------------ helpers
