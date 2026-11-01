@@ -149,7 +149,7 @@ class Tools:
                   "Schema validation failed", str(exc)[:160]); c.done.add("parse_alerts"); return {"constraints": 0}
         except LLMError as exc:
             c.deterministic = True; c.notice("Deterministic mode (no LLM).")
-            c.add("parse_alerts", "LLM unreachable", "continue in deterministic mode", str(exc)[:120], "0 constraints")
+            c.add("parse_alerts", "LLM unreachable", "continue in deterministic mode", str(exc)[:400], "0 constraints")
             c.done.add("parse_alerts"); return {"constraints": 0}
         kept, conflict = resolve_conflicts(cons)
         if conflict:

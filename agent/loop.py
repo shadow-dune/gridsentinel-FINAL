@@ -95,7 +95,7 @@ def run_agent(ctx: CycleContext) -> None:
         except LLMError as exc:
             ctx.deterministic = True
             ctx.notice("Deterministic mode (no LLM).")
-            ctx.add("agent", "LLM unreachable", "switch to deterministic mode", str(exc)[:160], "deterministic sequence")
+            ctx.add("agent", "LLM unreachable", "switch to deterministic mode", str(exc)[:400], "deterministic sequence")
     else:
         ctx.deterministic = True
         ctx.notice("Deterministic mode (no LLM).")

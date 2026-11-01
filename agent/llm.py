@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -10,6 +11,8 @@ from pydantic import ValidationError
 
 from config.settings import Settings
 from data.schemas import AlertItem, Constraint, ConstraintList
+
+logger = logging.getLogger("gridsentinel.llm")
 
 BASE_URLS = {"groq": "https://api.groq.com/openai/v1", "openai": "https://api.openai.com/v1"}
 
@@ -57,10 +60,16 @@ class LLMClient:
             with httpx.Client(timeout=max(self.s.HTTP_TIMEOUT_SECONDS, 20.0), transport=self._transport) as c:
                 r = c.post(f"{self._base_url()}/chat/completions", json=body,
                            headers={"Authorization": f"Bearer {self.s.LLM_API_KEY}"})
-            r.raise_for_status()
+            if r.status_code >= 400:
+                # The provider's JSON error body explains the cause (bad key, unknown model, no tool support...).
+                raise LLMError(f"HTTP {r.status_code} from {self._base_url()} (model {self.s.LLM_MODEL!r}): {r.text[:300]}")
             return r.json()["choices"][0]["message"]
+        except LLMError as exc:
+            logger.warning("LLM request failed: %s", exc)
+            raise
         except Exception as exc:
-            raise LLMError(f"LLM request failed: {exc}") from exc
+            logger.warning("LLM request failed: %s: %s", type(exc).__name__, exc)
+            raise LLMError(f"LLM request failed: {type(exc).__name__}: {exc}") from exc
 
     def parse_alerts(self, alerts: List[AlertItem], now: datetime, max_retries: int = 2) -> List[Constraint]:
         """Alert text -> validated Constraint list. Up to 2 retries, each including the validation error (L4)."""
